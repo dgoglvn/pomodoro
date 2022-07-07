@@ -13,6 +13,7 @@ const mainButton = document.getElementById("js-btn");
 mainButton.addEventListener("click", () => {
   buttonSound.play();
   const { action } = mainButton.dataset;
+
   if (action === "start") {
     startTimer();
   } else {
@@ -31,11 +32,7 @@ function getRemainingTime(endTime) {
   const minutes = Number.parseInt((total / 60) % 60, 10);
   const seconds = Number.parseInt(total % 60, 10);
 
-  return {
-    total,
-    minutes,
-    seconds,
-  };
+  return { total, minutes, seconds };
 }
 
 function startTimer() {
@@ -48,12 +45,11 @@ function startTimer() {
   mainButton.textContent = "stop";
   mainButton.classList.add("active");
 
-  interval = setInterval(function () {
+  interval = setInterval(() => {
     timer.remainingTime = getRemainingTime(endTime);
     updateClock();
 
-    total = timer.remainingTime.total;
-    if (total <= 0) {
+    if (total <= 10) {
       clearInterval(interval);
 
       switch (timer.mode) {
@@ -68,13 +64,13 @@ function startTimer() {
           switchMode("pomodoro");
       }
 
+      document.querySelector(`[data-sound="${timer.mode}"]`).play();
+
       if (Notification.permission === "granted") {
         const text =
           timer.mode === "pomodoro" ? "Get back to work!" : "Take a break!";
         new Notification(text);
       }
-
-      document.querySelector(`[data-sound="${timer.mode}"]`).play();
 
       startTimer();
     }
@@ -103,6 +99,9 @@ function updateClock() {
   const text =
     timer.mode === "pomodoro" ? "Get back to work!" : "Take a break!";
   document.title = `${minutes}:${seconds} - ${text}`;
+
+  const progress = document.getElementById("js-progress");
+  progress.value = timer[timer.mode] * 60 - timer.remainingTime.total;
 }
 
 function switchMode(mode) {
@@ -113,21 +112,25 @@ function switchMode(mode) {
     seconds: 0,
   };
 
-  const modes = document.querySelectorAll("button[data-mode]");
-  modes.forEach((e) => e.classList.remove("active"));
-
+  document
+    .querySelectorAll("button[data-mode]")
+    .forEach((e) => e.classList.remove("active"));
   document.querySelector(`[data-mode="${mode}"]`).classList.add("active");
-  document.body.style.backgroundColor = `var(--${mode})`;
 
-  const mainButton = document.getElementById("js-btn");
+  document.body.style.backgroundColor = `var(--${mode})`;
   mainButton.style.color = `var(--${mode})`;
+
+  document
+    .getElementById("js-progress")
+    .setAttribute("max", timer.remainingTime.total);
 
   updateClock();
 }
 
-function handleMode(e) {
-  // Extracting the dataset and storing it in the 'mode' variable
-  const { mode } = e.target.dataset;
+function handleMode(event) {
+  const { mode } = event.target.dataset;
+
+  if (!mode) return;
 
   switchMode(mode);
   stopTimer();
@@ -141,8 +144,8 @@ document.addEventListener("DOMContentLoaded", () => {
       Notification.permission !== "granted" &&
       Notification.permission !== "denied"
     ) {
-      // ask the user for permission
-      Notification.requestPermission().then(function (permission) {
+      // Ask the user for permission
+      Notification.requestPermission().then((permission) => {
         // If permission is granted
         if (permission === "granted") {
           // Create a new notification
